@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Numeric Logic Pro</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --neon-cyan: #00f2ff;
+            --neon-yellow: #f1c40f;
+            --neon-pink: #ff007f;
+            --text-color: #e0e0e0;
+        }
+
+        /* Xóa bỏ mọi khoảng trắng mặc định */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+
+        /* Quan trọng: Ép nền đen cho toàn bộ khung nhìn */
+        html {
+            background-color: var(--bg-color);
+            height: 100%;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            width: 100vw;
+            /* Quy tắc 3 mép: Trên 30px, hai bên 3px */
+            padding: 30px 3px 20px 3px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #333;
+            padding: 8px 15px;
+            border-radius: 4px;
+            background: #0a0a0a;
+        }
+
+        .input-group label {
+            font-size: 11px;
+            color: var(--neon-cyan);
+            letter-spacing: 1px;
+        }
+
+        .input-group input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--neon-cyan);
+            color: #fff;
+            width: 50px;
+            text-align: center;
+            outline: none;
+            font-size: 16px; /* Chống zoom trên mobile khi click */
+            font-weight: bold;
+        }
+
+        .custom-file-upload {
+            border: 2px solid var(--neon-cyan);
+            padding: 12px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            color: var(--neon-cyan);
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+            background: transparent;
+            transition: 0.2s;
+        }
+
+        .custom-file-upload:active {
+            background: var(--neon-cyan);
+            color: #000;
+        }
+
+        input[type="file"] { display: none; }
+
+        .status-msg {
+            color: var(--neon-pink);
+            font-size: 11px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        /* Lưới hiển thị */
+        #output {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            width: 100%;
+            align-items: center;
+        }
+
+        .row { display: flex; gap: 2px; }
+
+        .cell {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #222;
+            background: #080808;
+            font-size: 14px;
+            border-radius: 2px;
+        }
+
+        /* Highlight vàng neon */
+        .highlight {
+            background-color: var(--neon-yellow) !important;
+            color: #000 !important;
+            box-shadow: 0 0 12px var(--neon-yellow);
+            font-weight: bold;
+            border-color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <div class="input-group">
+        <label>SỐ Ô NGƯỢC (>=):</label>
+        <input type="number" id="threshold" value="4" min="1" max="10">
+    </div>
+
+    <label for="file-upload" class="custom-file-upload">
+        📂 CHỌN FILE DỮ LIỆU
+    </label>
+    <input id="file-upload" type="file" accept=".txt"/>
+</div>
+
+<div id="status" class="status-msg">Hệ thống sẵn sàng...</div>
+<div id="output"></div>
+
+<script>
+    const fileInput = document.getElementById('file-upload');
+    const thresholdInput = document.getElementById('threshold');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    
+    let currentData = "";
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            currentData = e.target.result;
+            processData();
+        };
+        reader.readAsText(file);
+    });
+
+    thresholdInput.addEventListener('input', () => {
+        if (currentData) processData();
+    });
+
+    const isLarge = (n) => parseInt(n) >= 5;
+
+    function processData() {
+        const numbers = currentData.match(/\d/g) || [];
+        const rows = [];
+        for (let i = 0; i < numbers.length; i += 10) {
+            rows.push(numbers.slice(i, i + 10));
+        }
+        renderGrid(rows);
+    }
+
+    function renderGrid(rows) {
+        output.innerHTML = '';
+        const limit = parseInt(thresholdInput.value) || 1;
+        const highlights = rows.map(row => new Array(row.length).fill(false));
+
+        for (let r = 0; r < rows.length - 1; r++) {
+            const rowA = rows[r];
+            const rowB = rows[r + 1];
+            let count = 0;
+            let tempPos = [];
+
+            for (let c = 0; c < 10; c++) {
+                if (rowA[c] === undefined || rowB[c] === undefined) continue;
+                
+                if (isLarge(rowA[c]) !== isLarge(rowB[c])) {
+                    count++;
+                    tempPos.push(c);
+                } else {
+                    if (count >= limit) mark(r, tempPos, highlights);
+                    count = 0;
+                    tempPos = [];
+                }
+            }
+            if (count >= limit) mark(r, tempPos, highlights);
+        }
+
+        const fragment = document.createDocumentFragment();
+        rows.forEach((row, rIdx) => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'row';
+            row.forEach((num, cIdx) => {
+                const cell = document.createElement('div');
+                cell.className = 'cell' + (highlights[rIdx][cIdx] ? ' highlight' : '');
+                cell.textContent = num;
+                rowDiv.appendChild(cell);
+            });
+            fragment.appendChild(rowDiv);
+        });
+        output.appendChild(fragment);
+        status.textContent = `ĐÃ QUÉT: ${rows.length} DÒNG`;
+    }
+
+    function mark(r, positions, highlights) {
+        positions.forEach(c => {
+            highlights[r][c] = true;
+            highlights[r + 1][c] = true;
+        });
+    }
+</script>
+
+</body>
+</html>
